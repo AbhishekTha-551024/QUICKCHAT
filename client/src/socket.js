@@ -1,10 +1,14 @@
 import { io } from "socket.io-client";
 
-const token = localStorage.getItem("token"); // saved after login
-const socket = io("http://localhost:8000", {
-  auth: { token }, // send token via Socket.IO handshake
-  transports: ["polling", "websocket"], // fallback for dev
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL;
 
+// create socket ONLY ONCE
+const socket = io(SOCKET_URL, {
+  auth: {
+    token: localStorage.getItem("token"),
+  },
+  withCredentials: true,
+  transports: ["websocket", "polling"],
 });
 
 export default socket;
