@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express from "express";
 import mongoose from "mongoose";
 import authRoutes from "./Router/auth.router.js";
@@ -8,120 +9,95 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
 
-mongoose.connect("mongodb://127.0.0.1:27017/User", {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
+const MONGO_URL = process.env.MONGODB_URL || "mongodb://127.0.0.1:27017/User";
+const JWT_SECRET = process.env.JWT_SECRET || "abhishek";
+const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5000";
+
+mongoose.connect(MONGO_URL)
 .then(() => console.log("MongoDB connected"))
 .catch(err => console.log("MongoDB connection error:", err));
 
 const app = express();
 
-// Middleware
 app.use(cors({
-  origin: "http://localhost:5173",
+  origin: CLIENT_URL,
   credentials: true
 }));
 app.use(cookieParser());
 app.use(express.json());
 
-// Routes
 app.use("/api", authRoutes);
 app.use("/api/products", productRoutes);
 
-// HTTP server
 const server = createServer(app);
 
-// Socket.IO
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: CLIENT_URL,
     methods: ["GET", "POST"],
     credentials: true
   }
 });
 
-// ✅ Authentication middleware for Socket.IO
 io.use((socket, next) => {
   const token = socket.handshake.auth?.token;
 
   if (!token) return next(new Error("Authentication error: no token"));
 
   try {
-    const user = jwt.verify(token, "abhishek"); // your secret
-    socket.user = user; // attach user info
+    const user = jwt.verify(token, JWT_SECRET);
+    socket.user = user;
     next();
   } catch (err) {
     next(new Error("Authentication error: invalid token"));
   }
 });
 
+const onlineUsers = {};
 
- //online user track karne ke liye
- const onlineUsers={}; //{roomName:[user1, user2]}
-
-// ✅ Socket events
 io.on("connection", (socket) => {
-  console.log("⚡ User connected:", socket.user.email);
+  console.log("User connected:", socket.user.email);
 
-  // Join a room
   socket.on("roomNumber", (roomName) => {
     socket.join(roomName);
 
-      if (!onlineUsers[roomName]) {
+    if (!onlineUsers[roomName]) {
       onlineUsers[roomName] = [];
     }
 
-    //yadi includenhi haito include karo
-    if(!onlineUsers[roomName].includes(socket.user.email)){
+    if (!onlineUsers[roomName].includes(socket.user.email)) {
       onlineUsers[roomName].push(socket.user.email);
     }
 
-    io.to(roomName).emit("onlineUsers",  onlineUsers[roomName]);
-    io.to(roomName).emit("message", `🔔 ${socket.user.email} joined ${roomName}`);
-
+    io.to(roomName).emit("onlineUsers", onlineUsers[roomName]);
+    io.to(roomName).emit("message", `${socket.user.email} joined ${roomName}`);
   });
 
-
-
-
-
-
-
-
-
-
-  // Send message
   socket.on("sendRoomMessage", ({ room, msg, sender }) => {
     io.to(room).emit("message", `${sender}: ${msg}`);
   });
 
-  // Leave room  //remove user 
   socket.on("leaveRoom", (room) => {
     socket.leave(room);
-    if(onlineUsers[room]){
- onlineUsers[room] = onlineUsers[room].filter(
-  (u)=>u !== socket.user.email
- );
-     io.to(room).emit("onlineUsers", onlineUsers[room]);
-
+    if (onlineUsers[room]) {
+      onlineUsers[room] = onlineUsers[room].filter(
+        (u) => u !== socket.user.email
+      );
+      io.to(room).emit("onlineUsers", onlineUsers[room]);
     }
-         io.to(room).emit("message",       `🔔 ${socket.user.email} left ${room}`
-);
-
+    io.to(room).emit("message", `${socket.user.email} left ${room}`);
   });
 
-  socket.on("typing", (data)=>{
+  socket.on("typing", (data) => {
     socket.to(data.room).emit("typing", data);
-  })
+  });
 
-  // Disconnect
   socket.on("disconnect", () => {
-    console.log("❌ User disconnected:", socket.user.email);
+    console.log("User disconnected:", socket.user.email);
   });
 });
-console.log(onlineUsers);
-const PORT = 8000;
-server.listen(PORT, () => {
-  console.log(`🚀 Server running on poo0rt ${PORT}`);
+
+const PORT = process.env.SERVER_PORT || 3000;
+server.listen(PORT, "localhost", () => {
+  console.log(`Server running on port ${PORT}`);
 });

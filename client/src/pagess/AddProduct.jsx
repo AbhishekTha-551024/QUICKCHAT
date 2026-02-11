@@ -28,7 +28,7 @@ useEffect(() => {
     e.preventDefault();
     try {
       const res = await axios.post(
-        `http://localhost:8000/api/products/${userData.id}/new`,
+        `${import.meta.env.VITE_BACKEND_URL}/api/products/${userData.id}/new`,
         {
          name,
          description,

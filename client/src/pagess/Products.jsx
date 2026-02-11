@@ -10,7 +10,7 @@ const {userData,isLoggedin,setProduct}= useContext(AppContent)
   const handleDelete = async (productId) => {
   try {
     const res = await axios.delete(
-      `http://localhost:8000/api/products/delete/${productId}`,
+      `${import.meta.env.VITE_BACKEND_URL}/api/products/delete/${productId}`,
       { withCredentials: true }
     );
 
@@ -27,7 +27,7 @@ const {userData,isLoggedin,setProduct}= useContext(AppContent)
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await axios.get("http://localhost:8000/api/products", {
+        const res = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/products`, {
           withCredentials: true,
         });
         console.log(res.data.user)
