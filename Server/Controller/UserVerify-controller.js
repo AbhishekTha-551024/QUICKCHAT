@@ -9,6 +9,10 @@ export const sendOtpController = async(req, res)=>{
     const {userId}= req.body;
     const user = await User.findById(userId);
 
+    if(!user){
+      return res.status(404).json({ success:false, message:"User not found" });
+    }
+
     if(user.isAccountVerified){
       return res.json({success:false, message:"account is alredy verifed"})
     }
@@ -24,7 +28,7 @@ await user.save();
       from: process.env.SMTP_USER,
       to:user.email ,
       subject:"Account verification Otp",
-      text:` your otp is ${otp}welcome to greatstack website your id ${email}`
+      text:`your otp is ${otp} welcome to greatstack website your id ${user.email}`
     }
 
     await transporter.sendMail(mailOption);
@@ -32,7 +36,7 @@ await user.save();
     res.json({success:true, message:"varificaion otp ssent on email"});
 
   }catch(error){
-res.json({secess:false, message: error.message})
+res.json({success:false, message: error.message})
   }
 };
 
@@ -43,8 +47,8 @@ export const verifyOtpController= async(req, res)=>{
     if(!user){return  res.status(404).json({ message: "User not found" })};
 
 
-    if(!user.isAccountVerified){
-      return res.status(400).json({ message: "Account already verified" });
+    if(user.isAccountVerified){
+      return res.status(400).json({ success:false, message: "Account already verified" });
     }
     //
     //check otp expire
@@ -58,7 +62,7 @@ export const verifyOtpController= async(req, res)=>{
     user.verifyOtp="";
     user.verifyOtpExpireAt=0;
     await user.save();
-    res.json({ message: "Account verified successfully" });
+    res.json({ success:true, message: "Account verified successfully" });
   }catch (error) {
     console.error(error);
     res.status(500).json({ message: "OTP verification failed" });
@@ -159,27 +163,28 @@ export const resetPasswordController= async(req,res)=>{
 
 };
 export const resendOtpController=async(req, res)=>{
-  const {email} = req.body;
+  try {
+    const {email} = req.body;
 
-  const user= await User.findOne({email});
-  if(!user){
-    return res.json({success:false, message:"email not regestered"});
-  }
-  if(!user.isAccountVerified){
-return res.json({success:false, message:"error"});
-  }
-  // ✅ Optional check: agar purana OTP abhi valid hai to wait karne ka message de sakte ho
-    if (user.verifyOtpExpireAt > Date.now()) {
-      return res.status(400).json({ message: "Please wait, OTP already sent. Try again later." });
+    const user= await User.findOne({email});
+    if(!user){
+      return res.json({success:false, message:"email not regestered"});
+    }
+    if(user.isAccountVerified){
+      return res.json({success:false, message:"account is already verified"});
     }
 
-const otp = crypto.randomInt(100000, 999999).toString();
+    if (user.verifyOtpExpireAt > Date.now()) {
+      return res.status(400).json({ success:false, message: "Please wait, OTP already sent. Try again later." });
+    }
 
-user.verifyOtp=otp;
-user.verifyOtpExpireAt=Date.now() + 10*60*1000; 
-await user.save();
+    const otp = crypto.randomInt(100000, 999999).toString();
 
-const mailOption=  {
+    user.verifyOtp=otp;
+    user.verifyOtpExpireAt=Date.now() + 10*60*1000; 
+    await user.save();
+
+    const mailOption=  {
       from: process.env.SMTP_USER,
       to:email ,
       subject:` welcome to nodemailer ${user.name}`,
@@ -187,6 +192,9 @@ const mailOption=  {
     }
 
     await transporter.sendMail(mailOption);
-     res.json({ success: true, message: "OTP SEND SUCCESFULLY" });
+    res.json({ success: true, message: "OTP SEND SUCCESFULLY" });
+  } catch (err) {
+    res.status(500).json({ success:false, message: err.message || "Server error" });
+  }
 
 };
