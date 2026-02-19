@@ -6,7 +6,7 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 const ForgetPassword = () => {
-  const { backUrl, setUserData, setSentEmail, setuserEmail } = useContext(AppContent);
+  const { backUrl, setUserData, setSentEmail, setUserEmail } = useContext(AppContent);
   const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
@@ -21,7 +21,7 @@ const ForgetPassword = () => {
         toast.success(res.data.message);
         setUserData(res.data.user);
         setSentEmail(true);
-        setuserEmail(res.data.user.email);
+        setUserEmail(res.data.user.email);
         navigate('/email-verify');
       } else {
         toast.error(res.data.message || "Request failed");

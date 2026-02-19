@@ -17,7 +17,7 @@ route.post('/sendverifyOtp', sendOtpController);
 route.post('/verify-otp',verifyOtpController);
 route.post('/forgetpass',forgotPasswordController );
 route.post('/otp-verify',otpVerifyController);
-route.post("/reset-password",resendOtpController);
-route.post("/resend-otp",resetPasswordController);
+route.post("/reset-password",resetPasswordController);
+route.post("/resend-otp",resendOtpController);
 
 export default route;
